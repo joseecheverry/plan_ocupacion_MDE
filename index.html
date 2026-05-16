@@ -579,8 +579,8 @@ footer {
 
 // ─── CONFIGURACIÓN SUPABASE ───────────────────────────────────────────────────
 // La anon key es segura para exponer: RLS garantiza solo lectura.
-const SUPABASE_URL = 'https://ieohxrawsfxlpxznlmaw.supabase.co';           // ← tu URL de Supabase
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllb2h4cmF3c2Z4bHB4em5sbWF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MDgwNDEsImV4cCI6MjA5NDQ4NDA0MX0.FVIMg5cgZtkoial4oa4xiah4RJ2zjIRdcXc4AYBEbks';     // ← tu anon key pública
+const SUPABASE_URL = 'REEMPLAZAR_CON_TU_URL';           // ← tu URL de Supabase
+const SUPABASE_ANON = 'REEMPLAZAR_CON_TU_ANON_KEY';     // ← tu anon key pública
 
 // ─── DEFINICIÓN DE COLUMNAS ───────────────────────────────────────────────────
 const GRUPOS_COLS = {
@@ -678,12 +678,34 @@ async function cargarDatos() {
   showStatus('<div class="spinner"></div>Cargando datos desde Supabase…');
 
   try {
-    // Un solo SELECT * — misma estrategia que el visor Python v2
-    const { data, error } = await sb
-      .from('v_empleos')     // vista que filtra _sincronizado_en
-      .select('*');
+    // Paginación automática: Supabase limita 1.000 filas por request por defecto.
+    // Traemos lotes de 1.000 hasta agotar todos los registros.
+    const PAGE = 1000;
+    let allData = [];
+    let page    = 0;
+    let done    = false;
 
-    if (error) throw error;
+    while (!done) {
+      const desde = page * PAGE;
+      const hasta = desde + PAGE - 1;
+      const { data: lote, error } = await sb
+        .from('v_empleos')
+        .select('*')
+        .range(desde, hasta)
+        .order('emp_posicion');
+
+      if (error) throw error;
+
+      if (lote && lote.length > 0) allData = allData.concat(lote);
+      // Si el lote es menor que PAGE, ya no hay más registros
+      done = !lote || lote.length < PAGE;
+      page++;
+
+      // Actualizar progreso proporcional a los lotes descargados
+      setProgress(Math.min(20 + page * 20, 65));
+    }
+
+    const data = allData;
     setProgress(70);
 
     // Precalcular caches de búsqueda (en el hilo JS — no bloquea más de 50ms)
