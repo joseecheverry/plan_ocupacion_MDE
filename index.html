@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a56db">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="DA Visor — Registro de Empleos Distrito Medellín">
+<title>MILAGROS · DA Visor</title>
+
+<!-- Supabase SDK — cargado desde CDN, sin npm, sin build step -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   TOKENS Y RESET
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --accent:    #1a56db;
+  --accent-dk: #1447b8;
+  --bg:        #f5f7fa;
+  --surface:   #ffffff;
+  --text:      #1a202c;
+  --muted:     #6b7280;
+  --border:    #e2e8f0;
+  --success:   #16a34a;
+  --warn:      #d97706;
+  --danger:    #dc2626;
+  --vac-tmp:   #fef9c3;
+  --vac-def:   #fee2e2;
+  --vac-res:   #e0e7ff;
+  --chip-on:   #1a56db;
+  --radius:    10px;
+  --shadow:    0 1px 4px rgba(0,0,0,.10);
+  --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+button { cursor: pointer; font-family: inherit; }
+input  { font-family: inherit; }
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════════════════ */
+header {
+  background: var(--accent);
+  color: #fff;
+  padding: 14px 16px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.brand { font-size: 1.25rem; font-weight: 900; letter-spacing: 2px; }
+.brand-sub { font-size: .7rem; opacity: .75; margin-top: 1px; font-weight: 400; }
+.badge-count {
+  background: rgba(255,255,255,.22);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BARRA DE BÚSQUEDA
+═══════════════════════════════════════════════════════════════ */
+.search-bar {
+  background: var(--surface);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+}
+.search-input-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+#txtBusqueda {
+  width: 100%;
+  padding: 10px 36px 10px 34px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  outline: none;
+  background: var(--bg);
+  -webkit-appearance: none;
+  transition: border-color .15s;
+}
+#txtBusqueda:focus { border-color: var(--accent); background: #fff; }
+#btnLimpiar {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#btnLimpiar:active { background: var(--bg); }
+
+/* Select de campo */
+.field-row {
+  display: flex;
+  gap: 8px;
+}
+.field-row select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .88rem;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  cursor: pointer;
+}
+.field-row select:focus { outline: none; border-color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════
+   CHIPS DE FILTRO RÁPIDO
+═══════════════════════════════════════════════════════════════ */
+.chips-wrap {
+  padding: 8px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  white-space: nowrap;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.chips-wrap::-webkit-scrollbar { display: none; }
+.chips-label {
+  font-size: .72rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.chip {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .12s, border-color .12s, color .12s;
+  user-select: none;
+}
+.chip.active {
+  background: var(--chip-on);
+  border-color: var(--chip-on);
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════════════════════════ */
+#progressBar {
+  height: 3px;
+  background: var(--accent);
+  transition: width .3s;
+  width: 0%;
+  position: sticky;
+  top: 0;
+  z-index: 99;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ESTADOS (carga, error, vacío)
+═══════════════════════════════════════════════════════════════ */
+#statusMsg {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  font-size: .95rem;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLA (vista desktop ≥ 768px)
+═══════════════════════════════════════════════════════════════ */
+#tableWrap {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .82rem;
+}
+thead th {
+  position: sticky;
+  top: 0;
+  background: #edf2fb;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: .75rem;
+  padding: 8px 10px;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  z-index: 10;
+}
+thead th:hover { background: #dce8f8; }
+thead th.sort-asc::after  { content: ' ↑'; opacity: .7; }
+thead th.sort-desc::after { content: ' ↓'; opacity: .7; }
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:hover { background: #f0f6ff !important; }
+tbody tr.vac-temporal   { background: var(--vac-tmp); }
+tbody tr.vac-definitiva { background: var(--vac-def); }
+tbody tr.vac-reservada  { background: var(--vac-res); }
+tbody td {
+  padding: 6px 10px;
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+td.col-posicion {
+  font-weight: 700;
+  color: #b45309;
+  text-align: center;
+  font-size: .8rem;
+}
+td.col-num { text-align: right; }
+mark { background: #fde68a; color: #78350f; border-radius: 2px; padding: 0 1px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TARJETAS (vista móvil < 768px)
+═══════════════════════════════════════════════════════════════ */
+#cardList {
+  display: none;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.card.vac-temporal   { border-left: 4px solid #ca8a04; }
+.card.vac-definitiva { border-left: 4px solid var(--danger); }
+.card.vac-reservada  { border-left: 4px solid #4338ca; }
+.card-header {
+  padding: 10px 12px 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  justify-content: space-between;
+}
+.card-pos {
+  font-size: .78rem;
+  font-weight: 800;
+  color: #b45309;
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.card-nombre {
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  line-height: 1.3;
+}
+.card-denom {
+  font-size: .78rem;
+  color: var(--muted);
+  padding: 0 12px 4px;
+}
+.card-body {
+  padding: 0 12px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.card-field {
+  font-size: .73rem;
+  color: var(--muted);
+}
+.card-field strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.badge-vac {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: .7rem;
+  font-weight: 700;
+  margin: 0 12px 8px;
+}
+.badge-tmp  { background: #fef9c3; color: #ca8a04; }
+.badge-def  { background: #fee2e2; color: var(--danger); }
+.badge-res  { background: #e0e7ff; color: #4338ca; }
+
+/* Panel de detalle (modal) */
+.detail-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 500;
+  align-items: flex-end;
+}
+.detail-overlay.open { display: flex; }
+.detail-panel {
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  width: 100%;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 18px 16px 32px;
+  animation: slideUp .2s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.detail-handle {
+  width: 44px; height: 4px;
+  background: var(--border);
+  border-radius: 4px;
+  margin: 0 auto 14px;
+}
+.detail-pos {
+  font-size: .8rem;
+  font-weight: 800;
+  color: #b45309;
+  background: #fef3c7;
+  display: inline-block;
+  border-radius: 5px;
+  padding: 3px 10px;
+  margin-bottom: 8px;
+}
+.detail-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  line-height: 1.3;
+}
+.detail-section {
+  margin-bottom: 14px;
+}
+.detail-section-title {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--accent);
+  margin-bottom: 7px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.detail-item label {
+  font-size: .68rem;
+  color: var(--muted);
+  display: block;
+}
+.detail-item span {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+.detail-item span.empty { color: #c0c4cc; font-weight: 400; font-style: italic; }
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTONES DE ACCIÓN
+═══════════════════════════════════════════════════════════════ */
+.fab-wrap {
+  position: fixed;
+  bottom: 18px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+}
+.fab {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.3rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab-reload { background: var(--accent); color: #fff; }
+.fab-export { background: var(--success); color: #fff; font-size: 1rem; font-weight: 700; }
+
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════════ */
+footer {
+  text-align: center;
+  padding: 10px 16px;
+  font-size: .68rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LAYOUT RESPONSIVO
+═══════════════════════════════════════════════════════════════ */
+#tableWrap { display: none; }
+#cardList  { display: flex; }
+
+@media (min-width: 768px) {
+  #tableWrap { display: block; }
+  #cardList  { display: none; }
+  body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+  main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .fab-wrap { display: none; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ═══════════════════════════ HEADER ════════════════════════════════ -->
+<header>
+  <div class="header-row">
+    <div>
+      <div class="brand">MILAGROS</div>
+      <div class="brand-sub">DA Visor · Registro de Empleos</div>
+    </div>
+    <div class="badge-count" id="badgeCount">—</div>
+  </div>
+</header>
+
+<main>
+<!-- ═══════════════════════════ BÚSQUEDA ══════════════════════════════ -->
+<div class="search-bar">
+  <div class="search-row">
+    <div class="search-input-wrap">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="search" id="txtBusqueda"
+        placeholder="Buscar por nombre, posición, cédula…"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <button id="btnLimpiar">✕</button>
+  </div>
+  <div class="field-row">
+    <select id="selGrupo">
+      <option value="">Todos los grupos</option>
+      <option value="empleo">Empleo</option>
+      <option value="situacion">Situación</option>
+      <option value="titular">Titular</option>
+      <option value="provisional">Encargado/Provisional</option>
+    </select>
+    <select id="selCampo"><option value="">Todos los campos</option></select>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ CHIPS ═════════════════════════════════ -->
+<div class="chips-wrap">
+  <span class="chips-label">Filtros:</span>
+  <span class="chip" data-col="sit_vacante_temporal"   data-tipo="positivo">Vac. Temporal</span>
+  <span class="chip" data-col="sit_vacante_definitiva" data-tipo="positivo">Vac. Definitiva</span>
+  <span class="chip" data-col="sit_vacante_reservada"  data-tipo="positivo">Vac. Reservada</span>
+  <span class="chip" data-col="tit_nombres_apellidos"  data-tipo="no_vacio">Con Titular</span>
+  <span class="chip" data-col="prov_nombres_apellidos" data-tipo="no_vacio">Con Encargado</span>
+  <span class="chip" data-col="sit_comision_misma_ent_ff" data-tipo="no_vacio">Con Comisión</span>
+</div>
+
+<!-- Progress bar -->
+<div id="progressBar"></div>
+
+<!-- Estado de carga -->
+<div id="statusMsg">
+  <div class="spinner"></div>
+  Cargando datos…
+</div>
+
+<!-- Vista móvil: tarjetas -->
+<div id="cardList"></div>
+
+<!-- Vista desktop: tabla -->
+<div id="tableWrap">
+  <table id="mainTable">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- Panel de detalle (móvil) -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-handle"></div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- FABs (móvil) -->
+<div class="fab-wrap">
+  <button class="fab fab-reload" id="fabReload" title="Recargar datos">↺</button>
+  <button class="fab fab-export" id="fabExport" title="Exportar CSV">CSV</button>
+</div>
+
+</main>
+
+<footer>
+  Diseñado por José Milagros Echeverry Sepúlveda · Abogado ·
+  Subsecretaría de Defensa y Protección de lo Público · Secretaría General
+  <span id="footerSync"></span>
+</footer>
+
+<!-- ═══════════════════════════ JAVASCRIPT ════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── CONFIGURACIÓN SUPABASE ───────────────────────────────────────────────────
+// La anon key es segura para exponer: RLS garantiza solo lectura.
+const SUPABASE_URL = 'https://ieohxrawsfxlpxznlmaw.supabase.co';           // ← tu URL de Supabase
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imllb2h4cmF3c2Z4bHB4em5sbWF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MDgwNDEsImV4cCI6MjA5NDQ4NDA0MX0.FVIMg5cgZtkoial4oa4xiah4RJ2zjIRdcXc4AYBEbks';     // ← tu anon key pública
+
+// ─── DEFINICIÓN DE COLUMNAS ───────────────────────────────────────────────────
+const GRUPOS_COLS = {
+  empleo: [
+    ['emp_posicion',            'Posición'],
+    ['emp_unid_org',            'Unid. Org.'],
+    ['emp_nombre_secretaria',   'Secretaría'],
+    ['emp_codigo_dep',          'Cód. Dep.'],
+    ['emp_subsecretaria',       'Subsecretaría'],
+    ['emp_cod_unidad',          'Cód. Unidad'],
+    ['emp_unidad_equipo',       'Unidad/Equipo'],
+    ['emp_naturaleza',          'Naturaleza'],
+    ['emp_curva',               'Curva'],
+    ['emp_grado',               'Grado'],
+    ['emp_nivel',               'Nivel'],
+    ['emp_codigo_empleo',       'Cód. Empleo'],
+    ['emp_denominacion_empleo', 'Denominación'],
+    ['emp_id_opec_cnsc',        'ID OPEC/CNSC'],
+    ['emp_modalidad_concurso',  'Modalidad'],
+    ['emp_sueldo',              'Sueldo'],
+    ['emp_fecha_actualizacion', 'Fec. Actualiz.'],
+  ],
+  situacion: [
+    ['sit_vacante_temporal',      'Vac. Temporal'],
+    ['sit_vacante_definitiva',    'Vac. Definitiva'],
+    ['sit_vacante_reservada',     'Vac. Reservada'],
+    ['sit_motivo_reserva',        'Motivo Reserva'],
+    ['sit_comision_misma_ent_ff', 'Comis. Misma Ent.'],
+    ['sit_comision_otra_ent_ff',  'Comis. Otra Ent.'],
+  ],
+  titular: [
+    ['tit_nro_personal',        'Nro. Personal'],
+    ['tit_fecha_ingreso',       'Fec. Ingreso'],
+    ['tit_entidad_origen',      'Entidad Origen'],
+    ['tit_numero_id',           'Número ID'],
+    ['tit_sexo',                'Sexo'],
+    ['tit_nombres_apellidos',   'Nombres y Apellidos'],
+    ['tit_tipo_vinculacion',    'Tipo Vinculación'],
+    ['tit_tipo_empleo',         'Tipo Empleo'],
+    ['tit_salario_personal',    'Salario'],
+    ['tit_id_teletrabajo',      'Teletrabajo'],
+    ['tit_fecha_inicio_empleo', 'Fec. Inicio'],
+    ['tit_fecha_fin_empleo',    'Fec. Fin'],
+  ],
+  provisional: [
+    ['prov_nro_personal',        'Nro. Personal'],
+    ['prov_fecha_ingreso',       'Fec. Ingreso'],
+    ['prov_otras_entidades',     'Otras Entidades'],
+    ['prov_numero_id',           'Número ID'],
+    ['prov_sexo',                'Sexo'],
+    ['prov_nombres_apellidos',   'Nombres y Apellidos'],
+    ['prov_tipo_vinculacion',    'Tipo Vinculación'],
+    ['prov_tipo_empleo',         'Tipo Empleo'],
+    ['prov_salario_personal',    'Salario'],
+    ['prov_id_teletrabajo',      'Teletrabajo'],
+    ['prov_fecha_inicio_empleo', 'Fec. Inicio'],
+    ['prov_fecha_fin_empleo',    'Fec. Fin'],
+  ],
+};
+
+// Lista plana de [key, label]
+const COLS_ALL = Object.values(GRUPOS_COLS).flat();
+const COLS_MAP = Object.fromEntries(COLS_ALL);  // key → label
+
+// Columnas de texto para búsqueda global (excluye campos numéricos de salario)
+const COLS_TEXTO = COLS_ALL
+  .map(([k]) => k)
+  .filter(k => !k.endsWith('_sueldo') && !k.endsWith('_salario_personal'));
+
+// ─── ESTADO ───────────────────────────────────────────────────────────────────
+let dataFull    = [];    // todos los registros cargados
+let cacheNorm   = [];    // string normalizado por fila (para búsqueda global)
+let cacheCol    = {};    // { col_key: [string normalizado por fila, ...] }
+let filtroActivo = [];   // índices de filas visibles
+let chipActivo  = null;  // { col, tipo }
+let sortCol     = null;
+let sortDir     = 1;     // 1 asc, -1 desc
+let debounceTimer = null;
+
+// ─── NORMALIZACIÓN (igual que visor Python v2: sin tildes, minúsculas) ────────
+function norm(s) {
+  return String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function esPositivo(val) {
+  return ['si', 'sí', 's', 'x', '1'].includes(String(val || '').trim().toLowerCase());
+}
+
+// ─── SUPABASE ─────────────────────────────────────────────────────────────────
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+async function cargarDatos() {
+  setProgress(5);
+  showStatus('<div class="spinner"></div>Cargando datos desde Supabase…');
+
+  try {
+    // Un solo SELECT * — misma estrategia que el visor Python v2
+    const { data, error } = await sb
+      .from('v_empleos')     // vista que filtra _sincronizado_en
+      .select('*');
+
+    if (error) throw error;
+    setProgress(70);
+
+    // Precalcular caches de búsqueda (en el hilo JS — no bloquea más de 50ms)
+    dataFull   = data || [];
+    cacheCol   = {};
+    COLS_TEXTO.forEach(k => cacheCol[k] = []);
+
+    cacheNorm = dataFull.map(reg => {
+      COLS_TEXTO.forEach(k => cacheCol[k].push(norm(reg[k])));
+      return COLS_TEXTO.map(k => norm(reg[k])).join(' ');
+    });
+
+    setProgress(90);
+    construirTablaHeader();
+    filtroActivo = dataFull.map((_, i) => i);
+    renderizarVista(filtroActivo);
+    actualizarConteo(filtroActivo.length, dataFull.length);
+    setProgress(0);
+    hideStatus();
+
+    document.getElementById('footerSync').textContent =
+      '  ·  Actualizado: ' + new Date().toLocaleString('es-CO');
+
+  } catch (err) {
+    setProgress(0);
+    showStatus(`<strong>Error al cargar datos</strong><br><small>${err.message}</small>`);
+    console.error(err);
+  }
+}
+
+// ─── FILTRO (show/hide equivalente al Python v2) ──────────────────────────────
+function aplicarFiltro() {
+  const texto    = norm(document.getElementById('txtBusqueda').value.trim());
+  const campoKey = document.getElementById('selCampo').value;
+  const n        = dataFull.length;
+  const visible  = new Uint8Array(n).fill(1);   // TypedArray: más rápido que Array
+
+  // 1. Filtro de texto
+  if (texto) {
+    if (campoKey && cacheCol[campoKey]) {
+      const col = cacheCol[campoKey];
+      for (let i = 0; i < n; i++) if (visible[i] && !col[i].includes(texto)) visible[i] = 0;
+    } else {
+      for (let i = 0; i < n; i++) if (visible[i] && !cacheNorm[i].includes(texto)) visible[i] = 0;
+    }
+  }
+
+  // 2. Filtro de chip
+  if (chipActivo) {
+    const { col, tipo } = chipActivo;
+    for (let i = 0; i < n; i++) {
+      if (!visible[i]) continue;
+      const v = dataFull[i][col];
+      if (tipo === 'positivo') { if (!esPositivo(v)) visible[i] = 0; }
+      else { if (!String(v || '').trim()) visible[i] = 0; }
+    }
+  }
+
+  filtroActivo = [];
+  for (let i = 0; i < n; i++) if (visible[i]) filtroActivo.push(i);
+
+  renderizarVista(filtroActivo);
+  actualizarConteo(filtroActivo.length, n);
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function claseVacante(reg) {
+  if (esPositivo(reg.sit_vacante_definitiva)) return 'vac-definitiva';
+  if (esPositivo(reg.sit_vacante_reservada))  return 'vac-reservada';
+  if (esPositivo(reg.sit_vacante_temporal))   return 'vac-temporal';
+  return '';
+}
+
+// ── Tabla (desktop) ───────────────────────────────────────────────────────────
+function construirTablaHeader() {
+  const cols = columnasMostrar();
+  const tr   = document.createElement('tr');
+  cols.forEach(([key, label]) => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    th.title = `${label}  [${key}]`;
+    th.dataset.col = key;
+    th.addEventListener('click', () => ordenarPor(key));
+    tr.appendChild(th);
+  });
+  document.getElementById('tableHead').innerHTML = '';
+  document.getElementById('tableHead').appendChild(tr);
+}
+
+function renderizarTabla(indices) {
+  const cols   = columnasMostrar();
+  const texto  = norm(document.getElementById('txtBusqueda').value.trim());
+  const tbody  = document.getElementById('tableBody');
+  const frag   = document.createDocumentFragment();
+
+  // Límite de render para rendimiento inicial
+  const MAX_RENDER = 2000;
+  const mostrar    = indices.slice(0, MAX_RENDER);
+
+  mostrar.forEach(i => {
+    const reg = dataFull[i];
+    const tr  = document.createElement('tr');
+    const vc  = claseVacante(reg);
+    if (vc) tr.className = vc;
+
+    cols.forEach(([key]) => {
+      const td  = document.createElement('td');
+      const val = reg[key] != null ? String(reg[key]) : '';
+      if (key === 'emp_posicion') td.className = 'col-posicion';
+      if (key === 'emp_sueldo' || key === 'tit_salario_personal' || key === 'prov_salario_personal')
+        td.className = 'col-num';
+
+      // Highlight de búsqueda
+      if (texto && val && norm(val).includes(texto)) {
+        const re = new RegExp(`(${escRe(texto)})`, 'gi');
+        td.innerHTML = val.replace(re, '<mark>$1</mark>');
+      } else {
+        td.textContent = val;
+      }
+      td.title = val;
+      tr.appendChild(td);
+    });
+
+    tr.addEventListener('dblclick', () => mostrarDetalle(i));
+    frag.appendChild(tr);
+  });
+
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
+
+  if (indices.length > MAX_RENDER) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = cols.length;
+    td.style.cssText = 'text-align:center;padding:12px;color:var(--muted);font-size:.8rem;';
+    td.textContent = `Mostrando ${MAX_RENDER.toLocaleString()} de ${indices.length.toLocaleString()} registros. Use el filtro para acotar.`;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+}
+
+// ── Tarjetas (móvil) ──────────────────────────────────────────────────────────
+function renderizarTarjetas(indices) {
+  const texto = norm(document.getElementById('txtBusqueda').value.trim());
+  const lista = document.getElementById('cardList');
+  const frag  = document.createDocumentFragment();
+  const MAX_CARDS = 300;
+  const mostrar   = indices.slice(0, MAX_CARDS);
+
+  mostrar.forEach(i => {
+    const reg  = dataFull[i];
+    const div  = document.createElement('div');
+    div.className = 'card ' + claseVacante(reg);
+
+    const nombre = reg.tit_nombres_apellidos || reg.prov_nombres_apellidos || '';
+    const denom  = reg.emp_denominacion_empleo || '';
+    const subsec = reg.emp_subsecretaria || '';
+    const salario= reg.tit_salario_personal
+      ? Number(reg.tit_salario_personal).toLocaleString('es-CO', {style:'currency', currency:'COP', maximumFractionDigits:0})
+      : '';
+
+    let vacBadge = '';
+    if (esPositivo(reg.sit_vacante_definitiva)) vacBadge = '<span class="badge-vac badge-def">Vac. Definitiva</span>';
+    else if (esPositivo(reg.sit_vacante_reservada)) vacBadge = '<span class="badge-vac badge-res">Vac. Reservada</span>';
+    else if (esPositivo(reg.sit_vacante_temporal))  vacBadge = '<span class="badge-vac badge-tmp">Vac. Temporal</span>';
+
+    div.innerHTML = `
+      <div class="card-header">
+        <span class="card-pos">${reg.emp_posicion || ''}</span>
+        <span class="card-nombre">${hl(nombre, texto)}</span>
+      </div>
+      <div class="card-denom">${denom}</div>
+      ${vacBadge}
+      <div class="card-body">
+        <div class="card-field"><strong>${hl(reg.tit_numero_id || '', texto)}</strong> <br>Cédula titular</div>
+        <div class="card-field"><strong>${subsec}</strong><br>Subsecretaría</div>
+        ${salario ? `<div class="card-field"><strong>${salario}</strong><br>Salario</div>` : ''}
+        <div class="card-field"><strong>${reg.emp_nivel || ''}</strong><br>Nivel</div>
+      </div>`;
+
+    div.addEventListener('click', () => mostrarDetalle(i));
+    frag.appendChild(div);
+  });
+
+  lista.innerHTML = '';
+  lista.appendChild(frag);
+
+  if (indices.length > MAX_CARDS) {
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'text-align:center;padding:16px;color:var(--muted);font-size:.8rem;';
+    aviso.textContent = `Mostrando ${MAX_CARDS} de ${indices.length.toLocaleString()} registros. Use el filtro para acotar.`;
+    lista.appendChild(aviso);
+  }
+}
+
+// ── Dispatch ──────────────────────────────────────────────────────────────────
+function renderizarVista(indices) {
+  if (window.innerWidth >= 768) renderizarTabla(indices);
+  else renderizarTarjetas(indices);
+}
+
+// ─── COLUMNAS SEGÚN GRUPO SELECCIONADO ───────────────────────────────────────
+function columnasMostrar() {
+  const g = document.getElementById('selGrupo').value;
+  if (g && GRUPOS_COLS[g]) return GRUPOS_COLS[g];
+  // Por defecto: columnas más útiles para el listado general
+  return [
+    ['emp_posicion',            'Posición'],
+    ['emp_subsecretaria',       'Subsecretaría'],
+    ['emp_denominacion_empleo', 'Denominación'],
+    ['emp_nivel',               'Nivel'],
+    ['tit_nombres_apellidos',   'Titular'],
+    ['tit_numero_id',           'Cédula Titular'],
+    ['tit_salario_personal',    'Salario'],
+    ['sit_vacante_temporal',    'Vac. Tmp.'],
+    ['sit_vacante_definitiva',  'Vac. Def.'],
+    ['prov_nombres_apellidos',  'Encargado'],
+  ];
+}
+
+// ─── PANEL DE DETALLE (móvil) ─────────────────────────────────────────────────
+function mostrarDetalle(i) {
+  const reg = dataFull[i];
+  const vc  = claseVacante(reg);
+  let html  = '';
+
+  html += `<div class="detail-pos">${reg.emp_posicion || ''}</div>`;
+  html += `<div class="detail-title">${reg.emp_denominacion_empleo || 'Sin denominación'}</div>`;
+
+  if (vc) {
+    const etq = vc === 'vac-definitiva' ? 'Vacante Definitiva'
+              : vc === 'vac-reservada'  ? 'Vacante Reservada' : 'Vacante Temporal';
+    const cls = vc === 'vac-definitiva' ? 'badge-def'
+              : vc === 'vac-reservada'  ? 'badge-res' : 'badge-tmp';
+    html += `<span class="badge-vac ${cls}" style="margin-left:0">${etq}</span>`;
+  }
+
+  const secciones = [
+    ['Datos del Empleo', GRUPOS_COLS.empleo],
+    ['Situación Administrativa', GRUPOS_COLS.situacion],
+    ['Servidor Titular', GRUPOS_COLS.titular],
+    ['Encargado / Provisional', GRUPOS_COLS.provisional],
+  ];
+
+  secciones.forEach(([titulo, cols]) => {
+    const items = cols.map(([key, label]) => {
+      const val = reg[key] != null ? String(reg[key]) : '';
+      const cls = val ? '' : 'empty';
+      return `<div class="detail-item"><label>${label}</label><span class="${cls}">${val || '—'}</span></div>`;
+    }).join('');
+    html += `<div class="detail-section">
+      <div class="detail-section-title">${titulo}</div>
+      <div class="detail-grid">${items}</div>
+    </div>`;
+  });
+
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+// ─── ORDENAMIENTO ─────────────────────────────────────────────────────────────
+function ordenarPor(col) {
+  if (sortCol === col) sortDir = -sortDir;
+  else { sortCol = col; sortDir = 1; }
+
+  // Actualizar visual del header
+  document.querySelectorAll('thead th').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.col === col) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+
+  filtroActivo.sort((a, b) => {
+    const va = String(dataFull[a][col] || '');
+    const vb = String(dataFull[b][col] || '');
+    const num_a = parseFloat(va), num_b = parseFloat(vb);
+    if (!isNaN(num_a) && !isNaN(num_b)) return (num_a - num_b) * sortDir;
+    return va.localeCompare(vb, 'es') * sortDir;
+  });
+
+  renderizarVista(filtroActivo);
+}
+
+// ─── COMBO DE CAMPO ───────────────────────────────────────────────────────────
+function poblarComboCampo() {
+  const g   = document.getElementById('selGrupo').value;
+  const sel = document.getElementById('selCampo');
+  sel.innerHTML = '<option value="">Todos los campos</option>';
+  const cols = g && GRUPOS_COLS[g] ? GRUPOS_COLS[g] : COLS_ALL;
+  cols.forEach(([k, l]) => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = l;
+    sel.appendChild(opt);
+  });
+}
+
+// ─── CONTEO ───────────────────────────────────────────────────────────────────
+function actualizarConteo(vis, total) {
+  const txt = vis === total
+    ? `${total.toLocaleString()} registros`
+    : `${vis.toLocaleString()} / ${total.toLocaleString()}`;
+  document.getElementById('badgeCount').textContent = txt;
+}
+
+// ─── EXPORTAR CSV ─────────────────────────────────────────────────────────────
+function exportarCSV() {
+  if (!filtroActivo.length) return;
+  const cols  = COLS_ALL.map(([k]) => k);
+  const hdr   = COLS_ALL.map(([, l]) => `"${l}"`).join(',');
+  const filas = filtroActivo.map(i => {
+    return cols.map(k => {
+      const v = dataFull[i][k];
+      return v != null ? `"${String(v).replace(/"/g, '""')}"` : '""';
+    }).join(',');
+  });
+  const csv = [hdr, ...filas].join('\n');
+  const a   = document.createElement('a');
+  a.href    = 'data:text/csv;charset=utf-8-sig,' + encodeURIComponent(csv);
+  a.download= `DA_Empleos_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+function showStatus(html) {
+  const el = document.getElementById('statusMsg');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+function hideStatus() {
+  document.getElementById('statusMsg').style.display = 'none';
+}
+function escRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function hl(text, query) {
+  if (!query || !text) return text;
+  return text.replace(new RegExp(`(${escRe(query)})`, 'gi'), '<mark>$1</mark>');
+}
+
+// ─── EVENTOS ──────────────────────────────────────────────────────────────────
+document.getElementById('txtBusqueda').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(aplicarFiltro, 160);
+});
+
+document.getElementById('selGrupo').addEventListener('change', () => {
+  poblarComboCampo();
+  construirTablaHeader();
+  aplicarFiltro();
+});
+
+document.getElementById('selCampo').addEventListener('change', aplicarFiltro);
+
+document.getElementById('btnLimpiar').addEventListener('click', () => {
+  document.getElementById('txtBusqueda').value = '';
+  document.getElementById('selGrupo').value = '';
+  document.getElementById('selCampo').value = '';
+  poblarComboCampo();
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chipActivo = null;
+  filtroActivo = dataFull.map((_, i) => i);
+  construirTablaHeader();
+  renderizarVista(filtroActivo);
+  actualizarConteo(filtroActivo.length, dataFull.length);
+});
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const yaActivo = chip.classList.contains('active');
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    if (yaActivo) {
+      chipActivo = null;
+    } else {
+      chip.classList.add('active');
+      chipActivo = { col: chip.dataset.col, tipo: chip.dataset.tipo };
+    }
+    aplicarFiltro();
+  });
+});
+
+// Cerrar panel de detalle
+document.getElementById('detailOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+// FABs
+document.getElementById('fabReload').addEventListener('click', cargarDatos);
+document.getElementById('fabExport').addEventListener('click', exportarCSV);
+
+// Botón de exportar en desktop (usando el header como disparador no existe,
+// se puede llamar desde consola o agregar botón en header si se desea)
+window.exportarCSV = exportarCSV;  // exponer globalmente
+
+// Redibujar al rotar el dispositivo
+window.addEventListener('resize', () => {
+  if (dataFull.length) {
+    construirTablaHeader();
+    renderizarVista(filtroActivo);
+  }
+});
+
+// ─── INICIO ───────────────────────────────────────────────────────────────────
+poblarComboCampo();
+cargarDatos();
+</script>
+</body>
+</html>
