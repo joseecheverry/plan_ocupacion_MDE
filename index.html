@@ -8,8 +8,7 @@
 <meta name="description" content="DA Visor — Registro de Empleos Distrito Medellín">
 <title>MILAGROS · DA Visor</title>
 
-<!-- Supabase SDK — cargado desde CDN, sin npm, sin build step -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Sin dependencias externas: usamos fetch nativo para la API REST de Supabase -->
 
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -671,41 +670,33 @@ function esPositivo(val) {
 }
 
 // ─── SUPABASE ─────────────────────────────────────────────────────────────────
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// Usamos fetch directo a la API REST de Supabase (sin el SDK para la carga masiva).
+// Razón: el SDK JS respeta el límite del servidor (1.000 filas).
+// Con fetch podemos pasar ?limit=10000 en la URL y el header apikey directamente,
+// trayendo todos los registros en UN SOLO request — más rápido en móvil.
 
 async function cargarDatos() {
-  setProgress(5);
-  showStatus('<div class="spinner"></div>Cargando datos desde Supabase…');
+  setProgress(10);
+  showStatus('<div class="spinner"></div>Cargando datos…');
 
   try {
-    // Paginación automática: Supabase limita 1.000 filas por request por defecto.
-    // Traemos lotes de 1.000 hasta agotar todos los registros.
-    const PAGE = 1000;
-    let allData = [];
-    let page    = 0;
-    let done    = false;
+    // Un solo request REST con limit explícito alto
+    const url = `${SUPABASE_URL}/rest/v1/v_empleos?select=*&order=emp_posicion&limit=20000`;
+    const resp = await fetch(url, {
+      headers: {
+        'apikey':        SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Accept':        'application/json',
+      }
+    });
 
-    while (!done) {
-      const desde = page * PAGE;
-      const hasta = desde + PAGE - 1;
-      const { data: lote, error } = await sb
-        .from('v_empleos')
-        .select('*')
-        .range(desde, hasta)
-        .order('emp_posicion');
-
-      if (error) throw error;
-
-      if (lote && lote.length > 0) allData = allData.concat(lote);
-      // Si el lote es menor que PAGE, ya no hay más registros
-      done = !lote || lote.length < PAGE;
-      page++;
-
-      // Actualizar progreso proporcional a los lotes descargados
-      setProgress(Math.min(20 + page * 20, 65));
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${txt}`);
     }
 
-    const data = allData;
+    setProgress(60);
+    const data = await resp.json();
     setProgress(70);
 
     // Precalcular caches de búsqueda (en el hilo JS — no bloquea más de 50ms)
